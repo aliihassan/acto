@@ -175,7 +175,7 @@ export default {
             user_score: self.playerScore,
             generated_score: self.generatedScore
         }).then(function(response) {
-            console.log(response);
+            alert('Score has been logged');
         }).catch(function(error) {
             self.$setErrorsFromResponse(error.response.data.errors);
         });

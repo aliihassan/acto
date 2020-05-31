@@ -2070,7 +2070,7 @@ var validCards = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "
         user_score: self.playerScore,
         generated_score: self.generatedScore
       }).then(function (response) {
-        console.log(response);
+        alert('Score has been logged');
       })["catch"](function (error) {
         self.$setErrorsFromResponse(error.response.data.errors);
       });
