@@ -1947,6 +1947,55 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 
+
+Vue.prototype.$setErrorsFromResponse = function (errorResponse) {
+  var _this = this;
+
+  // Only allow this function to be run if the validator exists
+  // and an error response was given.
+  if (!this.hasOwnProperty('$validator') || !errorResponse) {
+    return;
+  } // Check for error fields.
+
+
+  var keys = Object.keys(errorResponse);
+
+  if (keys.length === 0) {
+    return;
+  } // Clear errors in the Vue object.
+
+
+  this.$validator.errors.clear();
+  var errorFields = [];
+  keys.forEach(function (field) {
+    // If the field has a dot, it means it's part of an array input
+    if (field.indexOf(".") > -1) {
+      // Reconstruct the original field name. ex. 'urls[]'
+      var fieldOriginalName = field.split(".")[0] + "[]"; // If we don't have it in the resultant error fields, add it, otherwise
+      // only push the error as an array to the original response object.
+
+      if (!errorFields[fieldOriginalName]) {
+        errorFields.push(fieldOriginalName);
+        errorResponse[fieldOriginalName] = [errorResponse[field]];
+      } else {
+        errorResponse[fieldOriginalName].push(errorResponse[field]);
+      }
+    } else {
+      // Otherwise just add it to the list.
+      errorFields.push(field);
+    }
+  });
+  errorFields.forEach(function (field) {
+    var errorValue = errorResponse[field];
+    var errorString = errorValue instanceof Array ? errorValue.join(', ') : errorValue;
+
+    _this.$validator.errors.add({
+      field: field,
+      msg: errorString
+    });
+  });
+};
+
 Vue.use(vee_validate__WEBPACK_IMPORTED_MODULE_0__["default"]);
 var validCards = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 /* harmony default export */ __webpack_exports__["default"] = ({
@@ -1969,13 +2018,13 @@ var validCards = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "
   },
   methods: {
     playHand: function playHand() {
-      var _this = this;
+      var _this2 = this;
 
       this.$validator.validate().then(function (valid) {
         if (!valid) {
           alert("Please enter the valid data");
         } else {
-          _this.generateCards(_this.userHandArr.length);
+          _this2.generateCards(_this2.userHandArr.length);
         }
       });
     },
@@ -1995,7 +2044,7 @@ var validCards = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "
       this.generateScore();
     },
     generateScore: function generateScore() {
-      var _this2 = this;
+      var _this3 = this;
 
       var userScoreIndex = [];
       var generatedScoreIndex = [];
@@ -2009,10 +2058,21 @@ var validCards = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "
       });
       userScoreIndex.forEach(function (score, index) {
         if (score > generatedScoreIndex[index]) {
-          _this2.playerScore += 1;
+          _this3.playerScore += 1;
         } else if (score < generatedScoreIndex[index]) {
-          _this2.generatedScore += 1;
+          _this3.generatedScore += 1;
         }
+      });
+      var self = this; // save the result in the DB
+
+      axios.post('/api/score', {
+        name: self.name,
+        user_score: self.playerScore,
+        generated_score: self.generatedScore
+      }).then(function (response) {
+        console.log(response);
+      })["catch"](function (error) {
+        self.$setErrorsFromResponse(error.response.data.errors);
       });
     }
   }

@@ -38,6 +38,50 @@
 <script>
 import VeeValidate from "vee-validate";
 
+Vue.prototype.$setErrorsFromResponse = function(errorResponse) {
+    // Only allow this function to be run if the validator exists
+    // and an error response was given.
+    if(!this.hasOwnProperty('$validator') || !errorResponse) {
+        return;
+    }
+
+    // Check for error fields.
+    let keys = Object.keys(errorResponse);
+
+    if(keys.length === 0) {
+        return;
+    }
+
+    // Clear errors in the Vue object.
+    this.$validator.errors.clear();
+
+    let errorFields = [];
+    keys.forEach(field => {
+        // If the field has a dot, it means it's part of an array input
+        if(field.indexOf(".") > -1) {
+            // Reconstruct the original field name. ex. 'urls[]'
+            let fieldOriginalName = field.split(".")[0] + "[]";
+            // If we don't have it in the resultant error fields, add it, otherwise
+            // only push the error as an array to the original response object.
+            if(!errorFields[fieldOriginalName]) {
+                errorFields.push(fieldOriginalName);
+                errorResponse[fieldOriginalName] = [errorResponse[field]]
+            } else {
+                errorResponse[fieldOriginalName].push(errorResponse[field]);
+            }
+        } else {
+            // Otherwise just add it to the list.
+            errorFields.push(field);
+        }
+    });
+
+    errorFields.forEach(field => {
+        let errorValue = errorResponse[field];
+        let errorString = errorValue instanceof Array ? errorValue.join(', ') : errorValue;
+        this.$validator.errors.add({field: field, msg: errorString});
+    });
+}
+
 Vue.use(VeeValidate);
 
 const validCards = [
@@ -123,6 +167,18 @@ export default {
               this.generatedScore += 1;
           }
       });
+
+      let self = this;
+      // save the result in the DB
+      axios.post('/api/score', {
+            name: self.name,
+            user_score: self.playerScore,
+            generated_score: self.generatedScore
+        }).then(function(response) {
+            console.log(response);
+        }).catch(function(error) {
+            self.$setErrorsFromResponse(error.response.data.errors);
+        });
     }
   }
 };
